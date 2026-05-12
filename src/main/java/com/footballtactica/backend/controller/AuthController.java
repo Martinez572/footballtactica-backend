@@ -1,13 +1,15 @@
 package com.footballtactica.backend.controller;
 
+import com.footballtactica.backend.constants.ApiConstants;
 import com.footballtactica.backend.dto.AuthRequest;
 import com.footballtactica.backend.dto.AuthResponse;
 import com.footballtactica.backend.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.footballtactica.backend.constants.ApiConstants;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping(ApiConstants.AUTH_BASE)
 @CrossOrigin(origins = "*")
 public class AuthController {
 

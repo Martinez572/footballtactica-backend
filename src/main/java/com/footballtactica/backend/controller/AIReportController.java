@@ -1,5 +1,6 @@
 package com.footballtactica.backend.controller;
 
+import com.footballtactica.backend.constants.ApiConstants;
 import com.footballtactica.backend.entity.AIReport;
 import com.footballtactica.backend.service.AIReportService;
 import org.springframework.http.ResponseEntity;
@@ -7,9 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.footballtactica.backend.constants.ApiConstants;
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping(ApiConstants.REPORTS_BASE)
 @CrossOrigin(origins = "*")
 public class AIReportController {
 

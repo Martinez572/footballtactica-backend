@@ -12,7 +12,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import com.footballtactica.backend.constants.ApiConstants;
 import java.util.List;
+import com.footballtactica.backend.constants.ApiConstants;
 
 @Configuration
 @EnableWebSecurity
@@ -32,8 +34,7 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .anyRequest().authenticated())
+            .requestMatchers(ApiConstants.AUTH_BASE + "/**").permitAll()                .anyRequest().authenticated())
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

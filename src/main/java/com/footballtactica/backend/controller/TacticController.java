@@ -1,5 +1,6 @@
 package com.footballtactica.backend.controller;
 
+import com.footballtactica.backend.constants.ApiConstants;
 import com.footballtactica.backend.entity.Tactic;
 import com.footballtactica.backend.entity.TacticState;
 import com.footballtactica.backend.service.TacticService;
@@ -7,9 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
+import com.footballtactica.backend.constants.ApiConstants;
 
 @RestController
-@RequestMapping("/api/tactics")
+@RequestMapping(ApiConstants.TACTICS_BASE)
 @CrossOrigin(origins = "*")
 public class TacticController {
 

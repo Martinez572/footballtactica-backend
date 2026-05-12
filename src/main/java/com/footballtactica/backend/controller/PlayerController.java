@@ -1,14 +1,16 @@
 package com.footballtactica.backend.controller;
 
+import com.footballtactica.backend.constants.ApiConstants;
 import com.footballtactica.backend.entity.Player;
 import com.footballtactica.backend.service.PlayerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
+import com.footballtactica.backend.constants.ApiConstants;
 
 @RestController
-@RequestMapping("/api/players")
+@RequestMapping(ApiConstants.PLAYERS_BASE)
 @CrossOrigin(origins = "*")
 public class PlayerController {
 
