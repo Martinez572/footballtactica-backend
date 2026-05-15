@@ -18,40 +18,38 @@ public class GeminiService {
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=";
 
     public String analyze(String prompt) {
-        try {
-            String url = GEMINI_URL + apiKey;
-            Map<String, Object> part = Map.of("text", prompt);
-            Map<String, Object> content = Map.of("parts", List.of(part));
-            Map<String, Object> body = Map.of("contents", List.of(content));
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-            
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                List candidates = (List) response.getBody().get("candidates");
-                if (candidates != null && !candidates.isEmpty()) {
-                    Map candidate = (Map) candidates.get(0);
-                    Map contentResponse = (Map) candidate.get("content");
-                    if (contentResponse == null) return "Sin respuesta del modelo.";
-                    List parts = (List) contentResponse.get("parts");
-                    if (parts == null || parts.isEmpty()) return "Sin contenido en la respuesta.";
-                    StringBuilder result = new StringBuilder();
-                    for (Object part : parts) {
-                        Map partMap = (Map) part;
-                        if (partMap.containsKey("text")) {
-                            result.append(partMap.get("text"));
-                        }
+    try {
+        String url = GEMINI_URL + apiKey;
+        Map<String, Object> part = Map.of("text", prompt);
+        Map<String, Object> content = Map.of("parts", List.of(part));
+        Map<String, Object> body = Map.of("contents", List.of(content));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            List candidates = (List) response.getBody().get("candidates");
+            if (candidates != null && !candidates.isEmpty()) {
+                Map candidate = (Map) candidates.get(0);
+                Map contentResponse = (Map) candidate.get("content");
+                if (contentResponse == null) return "Sin respuesta del modelo.";
+                List parts = (List) contentResponse.get("parts");
+                if (parts == null || parts.isEmpty()) return "Sin contenido en la respuesta.";
+                StringBuilder result = new StringBuilder();
+                for (Object p : parts) {
+                    Map partMap = (Map) p;
+                    if (partMap.containsKey("text")) {
+                        result.append(partMap.get("text"));
                     }
-                    return result.length() > 0 ? result.toString() : "Sin texto generado.";
                 }
+                return result.length() > 0 ? result.toString() : "Sin texto generado.";
             }
-        } catch (Exception e) {
-            System.err.println("Error al analizar con Gemini: " + e.getMessage());
         }
-        return "Error al procesar la solicitud.";
+        return "No se pudo generar el análisis.";
+    } catch (Exception e) {
+        return "Error al conectar con Gemini: " + e.getMessage();
     }
-
+}
     public String analyzePlayer(String playerName, String position, String description) {
         String prompt = """
                 Eres un scout y analista táctico profesional de fútbol con 20 años de experiencia trabajando en clubes de élite.
