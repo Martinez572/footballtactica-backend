@@ -15,7 +15,7 @@ public class GeminiService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
+    private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=";
 
     public String analyze(String prompt) {
         try {
