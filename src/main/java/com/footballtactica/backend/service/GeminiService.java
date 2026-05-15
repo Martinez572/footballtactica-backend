@@ -27,20 +27,29 @@ public class GeminiService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 List candidates = (List) response.getBody().get("candidates");
                 if (candidates != null && !candidates.isEmpty()) {
                     Map candidate = (Map) candidates.get(0);
                     Map contentResponse = (Map) candidate.get("content");
+                    if (contentResponse == null) return "Sin respuesta del modelo.";
                     List parts = (List) contentResponse.get("parts");
-                    Map firstPart = (Map) parts.get(0);
-                    return (String) firstPart.get("text");
+                    if (parts == null || parts.isEmpty()) return "Sin contenido en la respuesta.";
+                    StringBuilder result = new StringBuilder();
+                    for (Object part : parts) {
+                        Map partMap = (Map) part;
+                        if (partMap.containsKey("text")) {
+                            result.append(partMap.get("text"));
+                        }
+                    }
+                    return result.length() > 0 ? result.toString() : "Sin texto generado.";
                 }
             }
-            return "No se pudo generar el análisis.";
         } catch (Exception e) {
-            return "Error al conectar con Gemini: " + e.getMessage();
+            System.err.println("Error al analizar con Gemini: " + e.getMessage());
         }
+        return "Error al procesar la solicitud.";
     }
 
     public String analyzePlayer(String playerName, String position, String description) {
@@ -206,13 +215,12 @@ public class GeminiService {
             "En tu análisis incluye:\n" +
             "## DESCRIPCIÓN GENERAL DE LA JUGADA\n" +
             "## ANÁLISIS INDIVIDUAL DE JUGADORES\n" +
-            "Identifica cada jugador por su dorsal y equipo. Analiza sus movimientos, decisiones y rendimiento.\n" +
+            "Identifica cada jugador por su dorsal y equipo.\n" +
             "## ANÁLISIS COLECTIVO\n" +
             "## ERRORES DETECTADOS\n" +
             "## ACIERTOS DETECTADOS\n" +
             "## RECOMENDACIONES TÁCTICAS\n" +
-            "## CALIFICACIÓN GENERAL (1-10)\n\n" +
-            "Sé extremadamente detallado y profesional."
+            "## CALIFICACIÓN GENERAL (1-10)\n"
         );
 
         Map<String, Object> inlineData = Map.of(
@@ -235,9 +243,17 @@ public class GeminiService {
             if (candidates != null && !candidates.isEmpty()) {
                 Map candidate = (Map) candidates.get(0);
                 Map contentResponse = (Map) candidate.get("content");
+                if (contentResponse == null) return "El modelo no pudo procesar el video.";
                 List parts = (List) contentResponse.get("parts");
-                Map firstPart = (Map) parts.get(0);
-                return (String) firstPart.get("text");
+                if (parts == null || parts.isEmpty()) return "No se obtuvo respuesta del modelo.";
+                StringBuilder result = new StringBuilder();
+                for (Object part : parts) {
+                    Map partMap = (Map) part;
+                    if (partMap.containsKey("text")) {
+                        result.append(partMap.get("text"));
+                    }
+                }
+                return result.length() > 0 ? result.toString() : "No se generó texto en la respuesta.";
             }
         }
         return "No se pudo analizar el video.";
