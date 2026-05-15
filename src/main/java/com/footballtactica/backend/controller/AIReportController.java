@@ -1,14 +1,15 @@
 package com.footballtactica.backend.controller;
 
-import com.footballtactica.backend.constants.ApiConstants;
 import com.footballtactica.backend.entity.AIReport;
 import com.footballtactica.backend.service.AIReportService;
+import com.footballtactica.backend.constants.ApiConstants;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import com.footballtactica.backend.constants.ApiConstants;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping(ApiConstants.REPORTS_BASE)
@@ -36,13 +37,57 @@ public class AIReportController {
             @PathVariable UUID userId,
             @PathVariable UUID playerId,
             @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(aiReportService.generatePlayerReport(userId, playerId, body.get("description")));
+        return ResponseEntity.ok(aiReportService.generatePlayerReport(
+                userId, playerId,
+                body.get("playerName"),
+                body.get("position"),
+                body.get("description")));
     }
 
     @PostMapping("/tactic/{userId}")
     public ResponseEntity<AIReport> generateTacticReport(
             @PathVariable UUID userId,
             @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(aiReportService.generateTacticReport(userId, body.get("description")));
+        return ResponseEntity.ok(aiReportService.generateTacticReport(
+                userId,
+                body.get("tacticName"),
+                body.get("formation"),
+                body.get("description")));
+    }
+
+    @PostMapping("/video/{userId}")
+    public ResponseEntity<AIReport> generateVideoReport(
+            @PathVariable UUID userId,
+            @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(aiReportService.generateVideoReport(
+                userId,
+                body.get("videoDescription"),
+                body.get("focusPlayer"),
+                body.get("matchContext")));
+    }
+
+    @PostMapping(value = "/video-file/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AIReport> generateVideoFileReport(
+            @PathVariable UUID userId,
+            @RequestParam("video") MultipartFile video,
+            @RequestParam("prompt") String prompt) {
+    try {
+        byte[] videoBytes = video.getBytes();
+        String mimeType = video.getContentType() != null ? video.getContentType() : "video/mp4";
+        return ResponseEntity.ok(aiReportService.generateVideoFileReport(userId, videoBytes, mimeType, prompt));
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().build();
+    }
+    }
+
+    @PostMapping("/comparison/{userId}")
+    public ResponseEntity<AIReport> generateComparisonReport(
+            @PathVariable UUID userId,
+            @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(aiReportService.generateComparisonReport(
+                userId,
+                body.get("player1"),
+                body.get("player2"),
+                body.get("position")));
     }
 }

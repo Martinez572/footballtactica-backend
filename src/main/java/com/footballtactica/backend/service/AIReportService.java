@@ -26,13 +26,9 @@ public class AIReportService {
         return aiReportRepository.findByPlayerId(playerId);
     }
 
-    public AIReport generatePlayerReport(UUID userId, UUID playerId, String playerDescription) {
-        String prompt = "Eres un analista de fútbol profesional. Analiza el siguiente jugador y genera un reporte táctico detallado en español:\n\n" + playerDescription + "\n\nIncluye: fortalezas, debilidades, posición ideal, y recomendaciones de mejora.";
-
-        String analysis = geminiService.analyze(prompt);
-
+    public AIReport generatePlayerReport(UUID userId, UUID playerId, String playerName, String position, String description) {
+        String analysis = geminiService.analyzePlayer(playerName, position, description);
         String summary = analysis.length() > 200 ? analysis.substring(0, 200) + "..." : analysis;
-
         AIReport report = AIReport.builder()
                 .userId(userId)
                 .playerId(playerId)
@@ -41,17 +37,12 @@ public class AIReportService {
                 .summary(summary)
                 .createdAt(LocalDateTime.now())
                 .build();
-
         return aiReportRepository.save(report);
     }
 
-    public AIReport generateTacticReport(UUID userId, String tacticDescription) {
-        String prompt = "Eres un analista táctico de fútbol profesional. Analiza la siguiente táctica y genera un reporte detallado en español:\n\n" + tacticDescription + "\n\nIncluye: efectividad, vulnerabilidades, situaciones ideales de uso y recomendaciones.";
-
-        String analysis = geminiService.analyze(prompt);
-
+    public AIReport generateTacticReport(UUID userId, String tacticName, String formation, String description) {
+        String analysis = geminiService.analyzeTactic(tacticName, formation, description);
         String summary = analysis.length() > 200 ? analysis.substring(0, 200) + "..." : analysis;
-
         AIReport report = AIReport.builder()
                 .userId(userId)
                 .analysisType("TACTIC")
@@ -59,7 +50,45 @@ public class AIReportService {
                 .summary(summary)
                 .createdAt(LocalDateTime.now())
                 .build();
+        return aiReportRepository.save(report);
+    }
 
+    public AIReport generateVideoReport(UUID userId, String videoDescription, String focusPlayer, String matchContext) {
+        String analysis = geminiService.analyzeVideo(videoDescription, focusPlayer, matchContext);
+        String summary = analysis.length() > 200 ? analysis.substring(0, 200) + "..." : analysis;
+        AIReport report = AIReport.builder()
+                .userId(userId)
+                .analysisType("VIDEO")
+                .content(analysis)
+                .summary(summary)
+                .createdAt(LocalDateTime.now())
+                .build();
+        return aiReportRepository.save(report);
+    }
+
+    public AIReport generateVideoFileReport(UUID userId, byte[] videoBytes, String mimeType, String userPrompt) {
+    String analysis = geminiService.analyzeVideoFile(videoBytes, mimeType, userPrompt);
+    String summary = analysis.length() > 200 ? analysis.substring(0, 200) + "..." : analysis;
+    AIReport report = AIReport.builder()
+            .userId(userId)
+            .analysisType("VIDEO")
+            .content(analysis)
+            .summary(summary)
+            .createdAt(java.time.LocalDateTime.now())
+            .build();
+    return aiReportRepository.save(report);
+    }
+
+    public AIReport generateComparisonReport(UUID userId, String player1, String player2, String position) {
+        String analysis = geminiService.comparePlayersAnalysis(player1, player2, position);
+        String summary = analysis.length() > 200 ? analysis.substring(0, 200) + "..." : analysis;
+        AIReport report = AIReport.builder()
+                .userId(userId)
+                .analysisType("COMPARISON")
+                .content(analysis)
+                .summary(summary)
+                .createdAt(LocalDateTime.now())
+                .build();
         return aiReportRepository.save(report);
     }
 }
