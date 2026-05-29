@@ -256,4 +256,87 @@ public class GeminiService {
                 """.formatted(videoUrl, userPrompt);
         return analyze(prompt);
     }
+    public String analyzeFrames(List<String> base64Frames, String userPrompt) {
+    try {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-api-key", apiKey);
+        headers.set("anthropic-version", "2023-06-01");
+
+        // Construir contenido con imágenes + texto
+        List<Map<String, Object>> contentList = new ArrayList<>();
+
+        for (String frame : base64Frames) {
+            Map<String, Object> imageSource = new HashMap<>();
+            imageSource.put("type", "base64");
+            imageSource.put("media_type", "image/jpeg");
+            imageSource.put("data", frame);
+
+            Map<String, Object> imageBlock = new HashMap<>();
+            imageBlock.put("type", "image");
+            imageBlock.put("source", imageSource);
+            contentList.add(imageBlock);
+        }
+
+        // Agregar el texto del prompt
+        Map<String, Object> textBlock = new HashMap<>();
+        textBlock.put("type", "text");
+        textBlock.put("text", """
+                Eres un director técnico y analista táctico profesional de fútbol con 20 años de experiencia.
+                
+                Se te proporcionan %d frames extraídos de un video de fútbol.
+                
+                Instrucción del analista: %s
+                
+                Analiza las imágenes y genera un reporte táctico DETALLADO en español con estas secciones:
+                
+                ## DESCRIPCIÓN GENERAL
+                Qué está ocurriendo en las imágenes.
+                
+                ## ANÁLISIS TÁCTICO
+                Posicionamiento, formación, movimientos detectados.
+                
+                ## JUGADORES DESTACADOS
+                Acciones individuales relevantes que puedas identificar.
+                
+                ## ERRORES DETECTADOS
+                Problemas tácticos o técnicos observados.
+                
+                ## ACIERTOS DETECTADOS
+                Aspectos positivos de la jugada.
+                
+                ## RECOMENDACIONES
+                Qué debería trabajar el equipo basándote en lo visto.
+                
+                ## CALIFICACIÓN GENERAL
+                Puntuación del 1 al 10 con justificación.
+                """.formatted(base64Frames.size(), userPrompt));
+        contentList.add(textBlock);
+
+        Map<String, Object> message = new HashMap<>();
+        message.put("role", "user");
+        message.put("content", contentList);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", CLAUDE_MODEL);
+        body.put("max_tokens", 2048);
+        body.put("messages", List.of(message));
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        ResponseEntity<String> response = restTemplate.postForEntity(CLAUDE_URL, request, String.class);
+
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode contentArray = root.path("content");
+            if (contentArray.isArray() && !contentArray.isEmpty()) {
+                return contentArray.get(0).path("text").asText();
+            }
+        }
+        return "No se pudo analizar el video.";
+    } catch (org.springframework.web.client.HttpClientErrorException e) {
+        return "Error de la API: " + e.getResponseBodyAsString();
+    } catch (Exception e) {
+        return "Error al analizar el video: " + e.getMessage();
+    }
+}
 }

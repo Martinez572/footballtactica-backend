@@ -91,4 +91,16 @@ public class AIReportService {
                 .build();
         return aiReportRepository.save(report);
     }
+    public AIReport generateVideoFramesReport(UUID userId, List<String> frames, String userPrompt) {
+    String analysis = geminiService.analyzeFrames(frames, userPrompt);
+    String summary = analysis.length() > 200 ? analysis.substring(0, 200) + "..." : analysis;
+    AIReport report = AIReport.builder()
+            .userId(userId)
+            .analysisType("VIDEO")
+            .content(analysis)
+            .summary(summary)
+            .createdAt(LocalDateTime.now())
+            .build();
+    return aiReportRepository.save(report);
+}
 }

@@ -112,4 +112,13 @@ public class AIReportController {
                 body.get("player2"),
                 body.get("position")));
             }
+        @PostMapping("/video-frames/{userId}")
+public ResponseEntity<AIReport> generateVideoFramesReport(
+        @PathVariable UUID userId,
+        @RequestBody Map<String, Object> body) {
+    String prompt = (String) body.get("prompt");
+    @SuppressWarnings("unchecked")
+    List<String> frames = (List<String>) body.get("frames");
+    return ResponseEntity.ok(aiReportService.generateVideoFramesReport(userId, frames, prompt));
+}
         }
