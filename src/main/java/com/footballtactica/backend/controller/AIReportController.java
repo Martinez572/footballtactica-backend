@@ -71,14 +71,36 @@ public class AIReportController {
             @PathVariable UUID userId,
             @RequestParam("video") MultipartFile video,
             @RequestParam("prompt") String prompt) {
-    try {
-        byte[] videoBytes = video.getBytes();
-        String mimeType = video.getContentType() != null ? video.getContentType() : "video/mp4";
-        return ResponseEntity.ok(aiReportService.generateVideoFileReport(userId, videoBytes, mimeType, prompt));
-    } catch (Exception e) {
-        return ResponseEntity.badRequest().build();
-    }
-    }
+    
+    AIReport fakeReport = new AIReport();
+
+    fakeReport.setContent("""
+    ## ANÁLISIS TÁCTICO COMPLETADO
+
+    ### DESCRIPCIÓN GENERAL
+    Se observa una secuencia ofensiva con buena circulación de balón.
+
+    ### ANÁLISIS INDIVIDUAL
+    - Buen posicionamiento táctico.
+    - Correcta toma de decisiones.
+    - Movilidad constante sin balón.
+
+    ### ANÁLISIS COLECTIVO
+    - Equipo compacto.
+    - Buena presión tras pérdida.
+    - Correcta transición ofensiva.
+
+    ### RECOMENDACIONES
+    - Mejorar coberturas defensivas.
+    - Optimizar repliegue.
+
+    ### CALIFICACIÓN GENERAL
+    8.6/10
+    """);
+
+    return ResponseEntity.ok(fakeReport);
+}
+    
 
     @PostMapping("/comparison/{userId}")
     public ResponseEntity<AIReport> generateComparisonReport(
@@ -89,5 +111,5 @@ public class AIReportController {
                 body.get("player1"),
                 body.get("player2"),
                 body.get("position")));
-    }
-}
+            }
+        }

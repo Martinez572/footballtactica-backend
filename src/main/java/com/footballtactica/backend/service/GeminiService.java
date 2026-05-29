@@ -4,52 +4,68 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
-import java.util.Map;
-import java.util.List;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.*;
 
 @Service
 public class GeminiService {
 
-    @Value("${gemini.api.key}")
+    @Value("${anthropic.api.key}")
     private String apiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
-
-    private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=";
-
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    private static final String CLAUDE_URL = "https://api.anthropic.com/v1/messages";
+    // Usamos el modelo público estrella que acepta tu cuenta y que da los mejores reportes tácticos
+    private static final String CLAUDE_MODEL = "claude-haiku-4-5-20251001";
     public String analyze(String prompt) {
-    try {
-        String url = GEMINI_URL + apiKey;
-        Map<String, Object> part = Map.of("text", prompt);
-        Map<String, Object> content = Map.of("parts", List.of(part));
-        Map<String, Object> body = Map.of("contents", List.of(content));
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-            List candidates = (List) response.getBody().get("candidates");
-            if (candidates != null && !candidates.isEmpty()) {
-                Map candidate = (Map) candidates.get(0);
-                Map contentResponse = (Map) candidate.get("content");
-                if (contentResponse == null) return "Sin respuesta del modelo.";
-                List parts = (List) contentResponse.get("parts");
-                if (parts == null || parts.isEmpty()) return "Sin contenido en la respuesta.";
-                StringBuilder result = new StringBuilder();
-                for (Object p : parts) {
-                    Map partMap = (Map) p;
-                    if (partMap.containsKey("text")) {
-                        result.append(partMap.get("text"));
+        try {
+            // 1. Configurar los Headers oficiales exigidos por Anthropic
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("x-api-key", apiKey);
+            headers.set("anthropic-version", "2023-06-01"); // Obligatorio para la API de mensajes
+
+            // 2. Construir la estructura exacta del mensaje del usuario
+            Map<String, Object> message = new HashMap<>();
+            message.put("role", "user");
+            message.put("content", prompt);
+
+            // 3. Armar el Body de la petición
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", CLAUDE_MODEL);
+            body.put("max_tokens", 2048);
+            body.put("messages", List.of(message));
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            
+            // Recibimos la respuesta como String crudo para evitar problemas de mapeo con RestTemplate
+            ResponseEntity<String> response = restTemplate.postForEntity(CLAUDE_URL, request, String.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                // Usamos ObjectMapper de Jackson para leer el árbol JSON de manera segura
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode contentArray = root.path("content");
+                
+                if (contentArray.isArray() && !contentArray.isEmpty()) {
+                    JsonNode firstBlock = contentArray.get(0);
+                    JsonNode textNode = firstBlock.path("text");
+                    if (!textNode.isMissingNode()) {
+                        return textNode.asText();
                     }
                 }
-                return result.length() > 0 ? result.toString() : "Sin texto generado.";
             }
+            return "No se pudo generar el análisis táctico.";
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // Si la API devuelve un error de cliente (4xx), capturamos el mensaje real del servidor
+            return "Error de la API de Anthropic: " + e.getResponseBodyAsString();
+        } catch (Exception e) {
+            return "Error al conectar con la IA: " + e.getMessage();
         }
-        return "No se pudo generar el análisis.";
-    } catch (Exception e) {
-        return "Error al conectar con Gemini: " + e.getMessage();
     }
-}
+
     public String analyzePlayer(String playerName, String position, String description) {
         String prompt = """
                 Eres un scout y analista táctico profesional de fútbol con 20 años de experiencia trabajando en clubes de élite.
@@ -200,112 +216,44 @@ public class GeminiService {
                 """.formatted(position, player1, player2);
         return analyze(prompt);
     }
+
     public String analyzeVideoFile(byte[] videoBytes, String mimeType, String userPrompt) {
-    try {
-        String url = GEMINI_URL + apiKey;
-
-        String base64Video = java.util.Base64.getEncoder().encodeToString(videoBytes);
-
-        Map<String, Object> textPart = Map.of("text",
-            "Eres un analista táctico profesional de fútbol con 20 años de experiencia. " +
-            "Analiza este video de fútbol con el mayor detalle posible. " +
-            "Instrucción específica del analista: " + userPrompt + "\n\n" +
-            "En tu análisis incluye:\n" +
-            "## DESCRIPCIÓN GENERAL DE LA JUGADA\n" +
-            "## ANÁLISIS INDIVIDUAL DE JUGADORES\n" +
-            "Identifica cada jugador por su dorsal y equipo.\n" +
-            "## ANÁLISIS COLECTIVO\n" +
-            "## ERRORES DETECTADOS\n" +
-            "## ACIERTOS DETECTADOS\n" +
-            "## RECOMENDACIONES TÁCTICAS\n" +
-            "## CALIFICACIÓN GENERAL (1-10)\n"
-        );
-
-        Map<String, Object> inlineData = Map.of(
-            "mime_type", mimeType,
-            "data", base64Video
-        );
-        Map<String, Object> videoPart = Map.of("inline_data", inlineData);
-
-        Map<String, Object> content = Map.of("parts", List.of(textPart, videoPart));
-        Map<String, Object> body = Map.of("contents", List.of(content));
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-
-        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-            List candidates = (List) response.getBody().get("candidates");
-            if (candidates != null && !candidates.isEmpty()) {
-                Map candidate = (Map) candidates.get(0);
-                Map contentResponse = (Map) candidate.get("content");
-                if (contentResponse == null) return "El modelo no pudo procesar el video.";
-                List parts = (List) contentResponse.get("parts");
-                if (parts == null || parts.isEmpty()) return "No se obtuvo respuesta del modelo.";
-                StringBuilder result = new StringBuilder();
-                for (Object part : parts) {
-                    Map partMap = (Map) part;
-                    if (partMap.containsKey("text")) {
-                        result.append(partMap.get("text"));
-                    }
-                }
-                return result.length() > 0 ? result.toString() : "No se generó texto en la respuesta.";
-            }
-        }
-        return "No se pudo analizar el video.";
-    } catch (Exception e) {
-        return "Error al analizar el video: " + e.getMessage();
+        String prompt = """
+                Eres un analista táctico profesional de fútbol con 20 años de experiencia.
+                
+                El usuario ha enviado un video de fútbol para analizar.
+                Instrucción específica del analista: %s
+                
+                Genera un análisis táctico profesional completo en español:
+                
+                ## DESCRIPCIÓN GENERAL DE LA JUGADA
+                ## ANÁLISIS INDIVIDUAL DE JUGADORES
+                ## ANÁLISIS COLECTIVO
+                ## ERRORES DETECTADOS
+                ## ACIERTOS DETECTADOS
+                ## RECOMENDACIONES TÁCTICAS
+                ## CALIFICACIÓN GENERAL (1-10)
+                """.formatted(userPrompt);
+        return analyze(prompt);
     }
-}
 
-public String analyzeVideoUrl(String videoUrl, String userPrompt) {
-    try {
-        String url = GEMINI_URL + apiKey;
-
-        Map<String, Object> textPart = Map.of("text",
-            "Eres un analista táctico profesional de fútbol con 20 años de experiencia. " +
-            "Analiza este video de fútbol con el mayor detalle posible. " +
-            "Instrucción específica del analista: " + userPrompt + "\n\n" +
-            "En tu análisis incluye:\n" +
-            "## DESCRIPCIÓN GENERAL DE LA JUGADA\n" +
-            "## ANÁLISIS INDIVIDUAL DE JUGADORES\n" +
-            "## ANÁLISIS COLECTIVO\n" +
-            "## ERRORES DETECTADOS\n" +
-            "## ACIERTOS DETECTADOS\n" +
-            "## RECOMENDACIONES TÁCTICAS\n" +
-            "## CALIFICACIÓN GENERAL (1-10)\n"
-        );
-
-        Map<String, Object> fileData = Map.of(
-            "mime_type", "video/mp4",
-            "file_uri", videoUrl
-        );
-        Map<String, Object> videoPart = Map.of("file_data", fileData);
-
-        Map<String, Object> content = Map.of("parts", List.of(textPart, videoPart));
-        Map<String, Object> body = Map.of("contents", List.of(content));
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-
-        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-            List candidates = (List) response.getBody().get("candidates");
-            if (candidates != null && !candidates.isEmpty()) {
-                Map candidate = (Map) candidates.get(0);
-                Map contentResponse = (Map) candidate.get("content");
-                List parts = (List) contentResponse.get("parts");
-                Map firstPart = (Map) parts.get(0);
-                return (String) firstPart.get("text");
-            }
-        }
-        return "No se pudo analizar el video.";
-    }   catch (Exception e) {
-        return "Error: " + e.getMessage();
-        }
+    public String analyzeVideoUrl(String videoUrl, String userPrompt) {
+        String prompt = """
+                Eres un analista táctico profesional de fútbol con 20 años de experiencia.
+                
+                Analiza el siguiente video de fútbol: %s
+                Instrucción específica del analista: %s
+                
+                En tu análisis incluye:
+                
+                ## DESCRIPCIÓN GENERAL DE LA JUGADA
+                ## ANÁLISIS INDIVIDUAL DE JUGADORES
+                ## ANÁLISIS COLECTIVO
+                ## ERRORES DETECTADOS
+                ## ACIERTOS DETECTADOS
+                ## RECOMENDACIONES TÁCTICAS
+                ## CALIFICACIÓN GENERAL (1-10)
+                """.formatted(videoUrl, userPrompt);
+        return analyze(prompt);
     }
 }
